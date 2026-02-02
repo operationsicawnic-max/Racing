@@ -1,124 +1,126 @@
-const game = document.querySelector('.game');
-const road = document.getElementById('road');
-const scoreEl = document.getElementById('score');
-const highScoreEl = document.getElementById('highScore');
-const startScreen = document.getElementById('startScreen');
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-let player = { speed: 5, score: 0 };
-let keys = { ArrowLeft: false, ArrowRight: false };
-let isPlaying = false;
+const speedEl = document.getElementById("speed");
+const scoreEl = document.getElementById("score");
+const nitroEl = document.getElementById("nitro");
 
-let highScore = localStorage.getItem('highScore') || 0;
-highScoreEl.innerText = highScore;
+const engineSound = document.getElementById("engineSound");
+const crashSound = document.getElementById("crashSound");
 
-// Create road lines
-for (let i = 0; i < 5; i++) {
-  let line = document.createElement('div');
-  line.classList.add('line');
-  line.y = i * 100;
-  line.style.top = line.y + 'px';
-  road.appendChild(line);
-}
+let keys = {};
+let gameRunning = true;
 
-// Create player car
-let car = document.createElement('div');
-car.classList.add('car');
-car.style.left = '130px';
-road.appendChild(car);
+let player = {
+  x: 0,
+  speed: 0,
+  maxSpeed: 220,
+  nitro: 100
+};
 
-// Create enemy cars
-let enemies = [];
-for (let i = 0; i < 3; i++) {
-  let enemy = document.createElement('div');
-  enemy.classList.add('enemy');
-  enemy.y = (i + 1) * -200;
-  enemy.style.left = Math.floor(Math.random() * 220) + 'px';
-  road.appendChild(enemy);
-  enemies.push(enemy);
-}
+let road = {
+  curve: 0,
+  curveSpeed: 0.0004
+};
 
-// Controls
-document.addEventListener('keydown', e => {
+let score = 0;
+
+document.addEventListener("keydown", e => {
   keys[e.key] = true;
-  if (e.key === 'Enter' && !isPlaying) startGame();
+  if (engineSound.paused) engineSound.play();
 });
 
-document.addEventListener('keyup', e => {
+document.addEventListener("keyup", e => {
   keys[e.key] = false;
 });
 
-function startGame() {
-  isPlaying = true;
-  player.score = 0;
-  player.speed = 5;
-  startScreen.style.display = 'none';
-  requestAnimationFrame(playGame);
+function toggleMode() {
+  document.body.classList.toggle("night");
 }
 
-function isCollide(a, b) {
-  let aRect = a.getBoundingClientRect();
-  let bRect = b.getBoundingClientRect();
-  return !(
-    aRect.bottom < bRect.top ||
-    aRect.top > bRect.bottom ||
-    aRect.right < bRect.left ||
-    aRect.left > bRect.right
+function drawRoad() {
+  ctx.fillStyle = "#555";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < 40; i++) {
+    let perspective = i / 40;
+    let roadWidth = 300 * perspective;
+    let center = canvas.width / 2 + road.curve * (1 - perspective) * 500;
+
+    ctx.fillStyle = i % 2 === 0 ? "#666" : "#555";
+    ctx.fillRect(
+      center - roadWidth / 2,
+      i * 15,
+      roadWidth,
+      20
+    );
+  }
+}
+
+function drawCar() {
+  ctx.fillStyle = "red";
+  ctx.fillRect(
+    canvas.width / 2 + player.x - 15,
+    canvas.height - 80,
+    30,
+    60
   );
 }
 
-function playGame() {
-  if (!isPlaying) return;
+function updatePhysics() {
+  // Steering
+  if (keys["ArrowLeft"]) player.x -= 4;
+  if (keys["ArrowRight"]) player.x += 4;
 
-  // Move road lines
-  document.querySelectorAll('.line').forEach(line => {
-    line.y += player.speed;
-    if (line.y > 500) line.y -= 500;
-    line.style.top = line.y + 'px';
-  });
+  // Acceleration
+  if (keys["ArrowUp"]) player.speed += 1.5;
+  else player.speed -= 1;
 
-  // Move enemies
-  enemies.forEach(enemy => {
-    if (isCollide(car, enemy)) {
-      endGame();
-    }
-    enemy.y += player.speed;
-    if (enemy.y > 500) {
-      enemy.y = -200;
-      enemy.style.left = Math.floor(Math.random() * 220) + 'px';
-    }
-    enemy.style.top = enemy.y + 'px';
-  });
-
-  // Move player
-  let carLeft = car.offsetLeft;
-  if (keys.ArrowLeft && carLeft > 0) {
-    car.style.left = carLeft - player.speed + 'px';
-  }
-  if (keys.ArrowRight && carLeft < 260) {
-    car.style.left = carLeft + player.speed + 'px';
+  // Nitro
+  if (keys["Shift"] && player.nitro > 0) {
+    player.speed += 4;
+    player.nitro -= 1;
+  } else if (player.nitro < 100) {
+    player.nitro += 0.3;
   }
 
-  // Update score
-  player.score++;
-  scoreEl.innerText = player.score;
+  player.speed = Math.max(0, Math.min(player.speed, player.maxSpeed));
 
-  if (player.score % 500 === 0) player.speed++;
+  // Road curvature
+  road.curve += road.curveSpeed * player.speed;
+  road.curve = Math.sin(road.curve);
 
-  requestAnimationFrame(playGame);
+  // Engine sound pitch
+  engineSound.playbackRate = 0.5 + player.speed / 300;
+
+  score += Math.floor(player.speed / 10);
 }
 
-function endGame() {
-  isPlaying = false;
-  startScreen.style.display = 'flex';
-  startScreen.innerHTML = `
-    <h1>💥 Game Over</h1>
-    <p>Your Score: ${player.score}</p>
-    <p>Press ENTER to restart</p>
-  `;
-
-  if (player.score > highScore) {
-    highScore = player.score;
-    localStorage.setItem('highScore', highScore);
-    highScoreEl.innerText = highScore;
-  }
+function drawHUD() {
+  speedEl.innerText = Math.floor(player.speed);
+  scoreEl.innerText = score;
+  nitroEl.innerText = Math.floor(player.nitro);
 }
+
+function gameLoop() {
+  if (!gameRunning) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawRoad();
+  drawCar();
+  updatePhysics();
+  drawHUD();
+
+  // Crash detection (off-road)
+  if (Math.abs(player.x) > 140) {
+    crashSound.play();
+    gameRunning = false;
+    alert("💥 CRASHED! Final Score: " + score);
+    location.reload();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
