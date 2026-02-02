@@ -2,26 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Arcade Racing Game</title>
+  <title>Velocity Racer</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="day">
 
-  <div class="game">
-    <div class="score">
-      Score: <span id="score">0</span><br>
-      High Score: <span id="highScore">0</span>
-    </div>
+<div class="hud">
+  <div>Speed: <span id="speed">0</span> km/h</div>
+  <div>Score: <span id="score">0</span></div>
+  <div>Nitro: <span id="nitro">100</span>%</div>
+</div>
 
-    <div class="start-screen" id="startScreen">
-      <h1>🏁 Racing Game</h1>
-      <p>Use ⬅️ ➡️ arrow keys to move</p>
-      <p>Press ENTER to start</p>
-    </div>
+<button class="mode-btn" onclick="toggleMode()">🌙</button>
 
-    <div class="road" id="road"></div>
-  </div>
+<div class="game">
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+</div>
 
-  <script src="script.js"></script>
+<audio id="engineSound" src="assets/engine.mp3" loop></audio>
+<audio id="crashSound" src="assets/crash.mp3"></audio>
+
+<script src="script.js"></script>
 </body>
 </html>
